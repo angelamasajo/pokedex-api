@@ -1,25 +1,22 @@
 require('dotenv').config()
 const express = require('express')
 const morgan = require('morgan')
-const { reset } = require('nodemon')
+const cors = require('cors')
+const helmet = require('helmet')
+const POKEDEX = require('./pokedex.json')
 
-console.log(process.env.API_TOKEN)
+// console.log(process.env.API_TOKEN)
 
 const app = express()
 
-app.search(morgan('dev'))
-
-// app.use((req, res) => {
-//   res.send('Hello, world!')
-// })
-
-
-//hardcoding array of valid types and send it back as json w/in request handler for GET /types
-const validTypes = [`Bug`, `Dark`, `Dragon`, `Electric`, `Fairy`, `Fighting`, `Fire`, `Flying`, `Ghost`, `Grass`, `Ground`, `Ice`, `Normal`, `Poison`, `Psychic`, `Rock`, `Steel`, `Water`]
+app.use(morgan('dev'))
+app.use(helmet())
+app.use(cors())
 
 app.use(function validateBearerToken(req, res, next) {
   const apiToken = process.env.API_TOKEN
   const authToken = req.get('Authorization')
+  // console.log(apiToken, authToken)
 
   if (!authToken || authToken.split(' ')[1] !== apiToken) {
     return res.status(401).json({ error: 'Unauthorized request' })
@@ -28,6 +25,9 @@ app.use(function validateBearerToken(req, res, next) {
   next()
 })
 
+//hardcoding array of valid types and send it back as json w/in request handler for GET /types
+const validTypes = [`Bug`, `Dark`, `Dragon`, `Electric`, `Fairy`, `Fighting`, `Fire`, `Flying`, `Ghost`, `Grass`, `Ground`, `Ice`, `Normal`, `Poison`, `Psychic`, `Rock`, `Steel`, `Water`]
+
 function handleGetTypes(req, res) {
   res.json(validTypes)
 }
@@ -35,7 +35,24 @@ function handleGetTypes(req, res) {
 app.get('/types', handleGetTypes)
 
 function handleGetPokemon(req, res) {
-  res.send('Hello, Pokemon!')
+  // res.send('Hello, Pokemon!')
+  let response = POKEDEX.pokemon;
+
+  //filter pokemon by name if query param is present
+  if(req.query.name) {
+    response = response.filter(pokemon =>
+      //case insensitive searching
+      pokemon.name.toLowerCase().includes(req.query.name.toLowerCase())
+    )
+  }
+
+  //filter pokemon by type if type query param is present
+  if(req.query.type) {
+    response = response.filter(pokemon =>
+      pokemon.type.includes(req.query.type)
+    )
+  }
+  res.json(response)
 }
 
 app.get('/pokemon', handleGetPokemon)
